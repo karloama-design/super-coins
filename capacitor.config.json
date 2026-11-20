@@ -1,0 +1,6 @@
+{
+  "appId": "pt.supercoins.game",
+  "appName": "Super Coins",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

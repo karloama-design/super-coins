@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#10142b"><title>Super Coins</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10142b;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none}
+#game{display:block;width:100vw;height:100vh;background:linear-gradient(#151b43,#25205b 62%,#11152e)}
+#hud{position:absolute;top:env(safe-area-inset-top,12px);left:0;right:0;display:flex;justify-content:space-between;padding:14px 18px;font-weight:800;text-shadow:0 2px 5px #0008;pointer-events:none}
+.pill{background:#ffffff18;border:1px solid #ffffff30;border-radius:18px;padding:8px 13px;backdrop-filter:blur(8px)}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:#090d20a8}
+.panel{width:min(440px,100%);text-align:center;padding:28px 22px;border:1px solid #ffffff30;border-radius:28px;background:linear-gradient(145deg,#252c65f5,#171b3df5);box-shadow:0 20px 70px #0008}
+h1{font-size:clamp(36px,10vw,54px);margin:0 0 6px;letter-spacing:-2px;color:#ffdb55;text-shadow:0 4px #a75b17}
+p{color:#d9defe;line-height:1.5}.btn{display:block;width:100%;border:0;border-radius:16px;padding:15px 18px;margin-top:12px;font-size:17px;font-weight:850;color:#241b36;background:linear-gradient(#ffe98a,#ffb82e);box-shadow:0 5px #bd701c;cursor:pointer}
+.btn.secondary{background:#ffffff18;color:white;border:1px solid #ffffff35;box-shadow:none}
+.small{font-size:12px;color:#aeb8ed;margin-top:18px}
+#controls{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);left:0;right:0;display:flex;justify-content:space-between;padding:0 26px;pointer-events:none}
+.ctrl{pointer-events:auto;width:76px;height:76px;border-radius:50%;border:2px solid #ffffff70;background:#ffffff22;color:white;font-size:30px;font-weight:900;backdrop-filter:blur(8px)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud"><div class="pill">🪙 <span id="score">0</span></div><div class="pill">❤️ <span id="lives">3</span></div><div class="pill">🏆 <span id="best">0</span></div></div>
+<div id="controls" class="hidden"><button class="ctrl" id="left">‹</button><button class="ctrl" id="right">›</button></div>
+<div class="overlay" id="start"><div class="panel"><h1>SUPER COINS</h1><p>Recolhe moedas, desvia-te dos obstáculos e bate o teu recorde!</p><p>⬅️ ➡️ Usa os botões ou toca no lado esquerdo/direito do ecrã.</p><button class="btn" id="play">JOGAR</button><div class="small">Jogo gratuito • Diverte-te e joga com responsabilidade</div></div></div>
+<div class="overlay hidden" id="over"><div class="panel"><h1>FIM DE JOGO</h1><p>Recolheste <b id="finalScore">0</b> moedas.</p><p>Recorde: <b id="finalBest">0</b></p><button class="btn" id="again">JOGAR NOVAMENTE</button><button class="btn secondary" id="reward">▶ Ver anúncio de teste e ganhar uma vida</button><div class="small">A opção de anúncio será ativada após configurar o AdMob.</div></div></div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let W,H,dpr,player,items,score,lives,speed,playing=false,spawn=0,last=0,invuln=0,raf=0;
+const $=id=>document.getElementById(id);
+let best=Number(localStorage.getItem('sc_best')||0);$('best').textContent=best;
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);if(player)player.y=H*.78}
+addEventListener('resize',resize);resize();
+function reset(){score=0;lives=3;speed=250;spawn=0;invuln=0;items=[];player={x:W/2,y:H*.78,w:42,h:48};hud();$('over').classList.add('hidden');$('start').classList.add('hidden');$('controls').classList.remove('hidden');playing=true;last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop)}
+function hud(){$('score').textContent=score;$('lives').textContent=lives;$('best').textContent=best}
+function move(dir){if(playing)player.x=Math.max(28,Math.min(W-28,player.x+dir*W*.13))}
+$('left').onpointerdown=e=>{e.preventDefault();move(-1)};$('right').onpointerdown=e=>{e.preventDefault();move(1)};
+canvas.addEventListener('pointerdown',e=>{if(!playing)return;move(e.clientX<W/2?-1:1)});
+$('play').onclick=reset;$('again').onclick=reset;
+$('reward').onclick=()=>{if(window.SuperCoinsAds&&window.SuperCoinsAds.showRewarded)window.SuperCoinsAds.showRewarded();else alert('Anúncio de teste: configura o AdMob para ativar recompensas.');};
+function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
+function draw(){
+ctx.clearRect(0,0,W,H);
+for(let i=0;i<35;i++){let x=(i*97)%W,y=(i*173+performance.now()*.012)%H;circle(x,y,1.2,'#ffffff55')}
+ctx.fillStyle='#ffffff0d';for(let y=H*.15;y<H;y+=85)ctx.fillRect(0,y,W,2);
+items.forEach(o=>{if(o.type==='coin'){circle(o.x,o.y,13,'#9a5818');circle(o.x,o.y-2,11,'#ffd84a');ctx.fillStyle='#fff2a5';ctx.font='bold 15px sans-serif';ctx.textAlign='center';ctx.fillText('$',o.x,o.y+4)}else{ctx.fillStyle='#f05c78';ctx.beginPath();ctx.roundRect(o.x-17,o.y-17,34,34,8);ctx.fill();ctx.fillStyle='#ffb2c2';ctx.fillRect(o.x-10,o.y-10,20,5)}});
+if(player){ctx.save();if(invuln>0&&Math.floor(invuln*10)%2)ctx.globalAlpha=.35;ctx.fillStyle='#35d7d0';ctx.beginPath();ctx.roundRect(player.x-21,player.y-25,42,50,13);ctx.fill();ctx.fillStyle='#143c5b';ctx.beginPath();ctx.roundRect(player.x-14,player.y-14,28,17,7);ctx.fill();circle(player.x-7,player.y-6,3,'white');circle(player.x+7,player.y-6,3,'white');ctx.fillStyle='#ffdb55';ctx.beginPath();ctx.moveTo(player.x-13,player.y+22);ctx.lineTo(player.x-5,player.y+31);ctx.lineTo(player.x+2,player.y+22);ctx.fill();ctx.restore()}
+}
+function end(){playing=false;$('controls').classList.add('hidden');$('finalScore').textContent=score;if(score>best){best=score;localStorage.setItem('sc_best',best)}$('finalBest').textContent=best;hud();$('over').classList.remove('hidden')}
+function loop(t){if(!playing)return;let dt=Math.min((t-last)/1000,.04);last=t;speed+=dt*5;spawn-=dt;if(spawn<=0){let coin=Math.random()<.68;items.push({x:35+Math.random()*(W-70),y:-25,type:coin?'coin':'block',r:14});spawn=Math.max(.32,0.85-(speed-250)/800)+Math.random()*.25}
+items.forEach(o=>o.y+=speed*dt);items=items.filter(o=>o.y<H+35);
+if(invuln>0)invuln-=dt;
+for(let i=items.length-1;i>=0;i--){let o=items[i];if(Math.abs(o.x-player.x)<30&&Math.abs(o.y-player.y)<34){if(o.type==='coin'){score++;if(score>best){best=score;localStorage.setItem('sc_best',best)} }else if(invuln<=0){lives--;invuln=1.2;if(lives<=0){items.splice(i,1);end();return}}items.splice(i,1);hud()}}
+draw();raf=requestAnimationFrame(loop)}
+draw();
+})();
+</script>
+</body></html>
